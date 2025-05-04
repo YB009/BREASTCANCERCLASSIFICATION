@@ -2,21 +2,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
 import numpy as np
+import os
 
 app = Flask(__name__)
-
-# Configure CORS for specific origins
-CORS(app, resources={
-    r"/predict": {
-        "origins": [
-            "https://your-frontend.onrender.com",  # Your frontend URL
-            "http://localhost:*",                 # For local testing
-            "https://your-backend.onrender.com"    # Your backend URL
-        ],
-        "methods": ["POST"],
-        "allow_headers": ["Content-Type"]
-    }
-})
+CORS(app)
 
 # Load model
 model = pickle.load(open('models/random_forest.pkl', 'rb'))
