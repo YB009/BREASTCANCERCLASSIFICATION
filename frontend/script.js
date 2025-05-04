@@ -62,3 +62,4 @@ document.getElementById('predict-btn').addEventListener('click', async () => {
         console.error('Prediction error:', error);
     }
 });
+
