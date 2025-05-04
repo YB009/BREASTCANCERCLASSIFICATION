@@ -11,6 +11,8 @@ const featureNames = [
     "concave_points_worst", "symmetry_worst", "fractal_dimension_worst"
 ];
 
+const API_URL = 'https://your-backend.onrender.com/predict';
+
 // Generate input fields
 const container = document.getElementById('input-container');
 featureNames.forEach(feature => {
