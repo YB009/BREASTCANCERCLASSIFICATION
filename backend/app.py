@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask_cors import CORS
 import joblib
 import numpy as np
 import os
 
-app = Flask(__name__, template_folder="../frontend")
+app = Flask(__name__, template_folder="../frontend", static_folder="../frontend")
+
 
 # Load models (assuming they are in ../models/)
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'models')
@@ -34,3 +36,7 @@ def predict():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+@app.route('/<path:filename>')
+def serve_static_files(filename):
+    return send_from_directory('../frontend', filename)
