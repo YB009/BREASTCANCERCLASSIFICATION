@@ -1,63 +1,85 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import joblib
 import numpy as np
 import os
 
-# Set Flask to serve from the frontend folder
-app = Flask(__name__, template_folder="../frontend", static_folder="../frontend")
-CORS(app)  # Allow CORS for frontend-backend communication if needed
+# Initialize Flask app with proper paths
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
-# Load models from the models directory
-MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'models')
-models = {
-    "logistic_regression": joblib.load(os.path.join(MODEL_DIR, 'logistic_regression.pkl')),
-    "svm": joblib.load(os.path.join(MODEL_DIR, 'svm.pkl')),
-    "decision_tree": joblib.load(os.path.join(MODEL_DIR, 'decision_tree.pkl')),
-    "random_forest": joblib.load(os.path.join(MODEL_DIR, 'random_forest.pkl')),
-}
+# Configure paths
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, '..', 'models', 'random_forest.pkl')
+FRONTEND_DIR = os.path.join(BASE_DIR, '..', 'frontend')
 
-# Serve index.html from the frontend folder
-@app.route("/")
-def home():
-    return render_template("index.html")
+# Load the correct model
+try:
+    model = joblib.load(MODEL_PATH)
+except Exception as e:
+    raise RuntimeError(f"Failed to load model: {str(e)}")
 
-# Handle prediction
+# Serve static files
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(FRONTEND_DIR, 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory(FRONTEND_DIR, path)
+
+# Prediction endpoint
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        data = request.json
+        data = request.get_json()
+        
         if not data or "features" not in data:
             return jsonify({"error": "Missing 'features' in request"}), 400
+            
+        features = np.array(data["features"])
+        
+        # Validate input features
+        if len(features) != 30:
+            return jsonify({
+                "error": f"Expected 30 features, got {len(features)}",
+                "required_features": [
+                    "radius_mean", "texture_mean", "perimeter_mean", 
+                    # ... list all 30 feature names ...
+                ]
+            }), 400
 
-        features = np.array(data["features"]).reshape(1, -1)
-        model_name = data.get("model", "logistic_regression")
-
-        model = models.get(model_name)
-        if not model:
-            return jsonify({"error": "Model not found"}), 400
-
+        # Reshape and predict
+        features = features.reshape(1, -1)
         prediction = model.predict(features)
-
-        # Try to get confidence score (if model supports predict_proba)
+        
+        # Get confidence score
         if hasattr(model, "predict_proba"):
             confidence = float(np.max(model.predict_proba(features)))
         else:
-            confidence = 1.0  # fallback when confidence can't be calculated
+            confidence = 1.0
 
         return jsonify({
             "prediction": int(prediction[0]),
-            "confidence": confidence
+            "confidence": confidence,
+            "model_used": "random_forest"
         })
 
     except Exception as e:
-        print(f"Prediction error: {e}")
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Prediction error: {str(e)}")
+        return jsonify({
+            "error": "Prediction failed",
+            "details": str(e)
+        }), 500
 
-# Serve static files (styles.css, script.js, etc.)
-@app.route('/<path:filename>')
-def serve_static_files(filename):
-    return send_from_directory('../frontend', filename)
+# Health check endpoint
+@app.route("/health")
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "model_loaded": True,
+        "expected_features": 30
+    })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
