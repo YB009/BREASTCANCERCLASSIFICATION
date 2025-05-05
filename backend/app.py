@@ -4,29 +4,30 @@ import joblib
 import numpy as np
 import os
 
-# Initialize Flask app with proper paths
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+app = Flask(__name__, static_folder=None)  # Disable default static handling
+CORS(app)
 
 # Configure paths
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, '..', 'models', 'random_forest.pkl')
 FRONTEND_DIR = os.path.join(BASE_DIR, '..', 'frontend')
 
-# Load the correct model
+# Load model
 try:
     model = joblib.load(MODEL_PATH)
 except Exception as e:
     raise RuntimeError(f"Failed to load model: {str(e)}")
 
-# Serve static files
+# Serve frontend files
 @app.route('/')
 def serve_frontend():
     return send_from_directory(FRONTEND_DIR, 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory(FRONTEND_DIR, path)
+    if os.path.exists(os.path.join(FRONTEND_DIR, path)):
+        return send_from_directory(FRONTEND_DIR, path)
+    return jsonify({"error": "File not found"}), 404
 
 # Prediction endpoint
 @app.route("/predict", methods=["POST"])
