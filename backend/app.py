@@ -25,21 +25,34 @@ def home():
 # Handle prediction
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.json
-    features = np.array(data["features"]).reshape(1, -1)
-    model_name = data.get("model", "logistic_regression")
+    try:
+        data = request.json
+        if not data or "features" not in data:
+            return jsonify({"error": "Missing 'features' in request"}), 400
 
-    model = models.get(model_name)
-    if not model:
-        return jsonify({"error": "Model not found"}), 400
+        features = np.array(data["features"]).reshape(1, -1)
+        model_name = data.get("model", "logistic_regression")
 
-    prediction = model.predict(features)
-    confidence = max(model.predict_proba(features)[0])  # optional
+        model = models.get(model_name)
+        if not model:
+            return jsonify({"error": "Model not found"}), 400
 
-    return jsonify({
-        "prediction": int(prediction[0]),
-        "confidence": float(confidence)
-    })
+        prediction = model.predict(features)
+
+        # Try to get confidence score (if model supports predict_proba)
+        if hasattr(model, "predict_proba"):
+            confidence = float(np.max(model.predict_proba(features)))
+        else:
+            confidence = 1.0  # fallback when confidence can't be calculated
+
+        return jsonify({
+            "prediction": int(prediction[0]),
+            "confidence": confidence
+        })
+
+    except Exception as e:
+        print(f"Prediction error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Serve static files (styles.css, script.js, etc.)
 @app.route('/<path:filename>')
