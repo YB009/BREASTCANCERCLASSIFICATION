@@ -4,10 +4,11 @@ import joblib
 import numpy as np
 import os
 
+# Set Flask to serve from the frontend folder
 app = Flask(__name__, template_folder="../frontend", static_folder="../frontend")
+CORS(app)  # Allow CORS for frontend-backend communication if needed
 
-
-# Load models (assuming they are in ../models/)
+# Load models from the models directory
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'models')
 models = {
     "logistic_regression": joblib.load(os.path.join(MODEL_DIR, 'logistic_regression.pkl')),
@@ -16,27 +17,34 @@ models = {
     "random_forest": joblib.load(os.path.join(MODEL_DIR, 'random_forest.pkl')),
 }
 
+# Serve index.html from the frontend folder
 @app.route("/")
 def home():
     return render_template("index.html")
 
-
+# Handle prediction
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
     features = np.array(data["features"]).reshape(1, -1)
     model_name = data.get("model", "logistic_regression")
-    
+
     model = models.get(model_name)
     if not model:
         return jsonify({"error": "Model not found"}), 400
 
     prediction = model.predict(features)
-    return jsonify({"prediction": int(prediction[0])})
+    confidence = max(model.predict_proba(features)[0])  # optional
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify({
+        "prediction": int(prediction[0]),
+        "confidence": float(confidence)
+    })
 
+# Serve static files (styles.css, script.js, etc.)
 @app.route('/<path:filename>')
 def serve_static_files(filename):
     return send_from_directory('../frontend', filename)
+
+if __name__ == "__main__":
+    app.run(debug=True)

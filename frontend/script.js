@@ -1,4 +1,5 @@
-const API_URL = 'https://breastcancerclassification.onrender.com/'; // Change to your Render URL when deploying
+const API_URL = 'https://breastcancerclassification.onrender.com/predict'; // added /predict
+ // Change to your Render URL when deploying
 
 const featureNames = [
     "radius_mean", "texture_mean", "perimeter_mean", "area_mean",
