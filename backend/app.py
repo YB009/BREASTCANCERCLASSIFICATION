@@ -3,7 +3,7 @@ import joblib
 import numpy as np
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="../frontend")
 
 # Load models (assuming they are in ../models/)
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'models')
@@ -16,7 +16,8 @@ models = {
 
 @app.route("/")
 def home():
-    return render_template("../frontend/index.html")
+    return render_template("index.html")
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
